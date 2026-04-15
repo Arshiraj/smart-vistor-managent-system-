@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, Download, User, Calendar, Tag, Shield, MoreVertical } from 'lucide-react';
+import { useSecurity } from '../context/SecurityContext';
 
-const VisitorLogs = ({ history }) => {
+const VisitorLogs = () => {
+    const { visitors } = useSecurity();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredHistory = history.filter(v =>
-        v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.idToken.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.purpose.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredHistory = visitors.filter(v => {
+        const idToken = v.idToken || v.id || '';
+        const purpose = v.purpose || v.org || '';
+        return v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               idToken.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               purpose.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <motion.div
@@ -83,12 +87,12 @@ const VisitorLogs = ({ history }) => {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold tracking-wide">{v.name}</p>
-                                                <p className="text-[10px] font-mono text-white/30">{v.idToken}</p>
+                                                <p className="text-[10px] font-mono text-white/30">{v.idToken || v.id}</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-xs text-white/60">{v.purpose}</span>
+                                        <span className="text-xs text-white/60">{v.purpose || v.org || 'General'}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
@@ -99,7 +103,7 @@ const VisitorLogs = ({ history }) => {
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
                                             <Tag className="w-3 h-3 text-brand-secondary" />
-                                            <span className="text-xs text-brand-secondary italic">{v.sentiment}</span>
+                                            <span className="text-xs text-brand-secondary italic">{v.sentiment || (v.flagged ? 'Agitated' : 'Calm')}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">

@@ -1,15 +1,20 @@
-import React from 'react';
-import { LayoutDashboard, ScanFace, ListFilter, ShieldCheck, Settings, Users, History, Bell } from 'lucide-react';
+import { LayoutDashboard, ScanFace, ShieldCheck, Settings, History, ChevronLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Check if we are on the config route to show a "Back to HQ" button
+    const isConfigRoute = location.pathname === '/config';
+
     const menuItems = [
-        { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { id: 'scan', icon: ScanFace, label: 'Smart Scan' },
-        { id: 'logs', icon: History, label: 'Visitor Logs' },
-        { id: 'users', icon: Users, label: 'Host Directory' },
-        { id: 'alerts', icon: Bell, label: 'Security Alerts' },
-        { id: 'settings', icon: Settings, label: 'System Config' },
+        { id: 'dashboard', icon: LayoutDashboard, label: 'Control Center' },
+        { id: 'scan', icon: ScanFace, label: 'Biometric Scan' },
+        { id: 'logs', icon: History, label: 'Audit Logs' },
+        { id: 'guard', icon: ShieldCheck, label: 'Guard Node', isExternal: true },
+        { id: 'settings', icon: Settings, label: 'System Config', isRoute: true },
     ];
 
     return (
@@ -24,10 +29,21 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                     return (
                         <button
                             key={item.id}
-                            onClick={() => setActiveTab(item.id)}
+                            onClick={() => {
+                                if (item.isExternal) {
+                                    window.open('/guard', '_blank');
+                                } else if (item.isRoute) {
+                                    navigate('/config');
+                                } else {
+                                    if (isConfigRoute) navigate('/');
+                                    setActiveTab(item.id);
+                                }
+                            }}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative ${isActive
                                     ? 'bg-brand-primary/10 text-brand-primary'
-                                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                                    : item.isExternal
+                                        ? 'text-emerald-400 hover:bg-emerald-500/10'
+                                        : 'text-white/50 hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             {isActive && (

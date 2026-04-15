@@ -10,15 +10,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mediapipe/face_detection": "^0.4.1646425229",
     "@tailwindcss/vite": "^4.1.18",
+    "@tensorflow-models/face-detection": "^1.0.3",
     "@tensorflow/tfjs": "^4.22.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.27.5",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.562.0",
     "puppeteer": "^24.37.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.2",
+    "recharts": "^3.8.1",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

@@ -54,8 +54,40 @@ const alertRules = [
 class SecurityAlertsSystem {
     constructor() {
         this.subscribers = [];
-        this.activeAlerts = [];
-        this.visitorStates = new Map(); // Store trajectory & metadata history for AI inference
+        this.voiceAlertsEnabled = true;
+        this.config = {
+            alerts: { timer: 30, sensitivity: 'High' }
+        };
+
+        this.activeAlerts = [
+            {
+                id: 'alert_demo_1',
+                ruleId: 'rule_1_v1',
+                name: 'Wandering Visitor',
+                severity: SEVERITY.HIGH,
+                timestamp: '2024-03-29T10:47:00.000Z',
+                context: { visitorId: 'V-1045', zone: 'Zone-B' },
+                status: 'NEW'
+            },
+            {
+                id: 'alert_demo_2',
+                ruleId: 'rule_4_v1',
+                name: 'Unauthorized Restricted Zone Entry',
+                severity: SEVERITY.CRITICAL,
+                timestamp: '2024-03-29T11:01:00.000Z',
+                context: { visitorId: 'V-1100', zone: 'Server Room' },
+                status: 'NEW'
+            },
+            {
+                id: 'alert_demo_3',
+                ruleId: 'ai_stp_v2',
+                name: 'AI PREDICTION: Unauthorized access attempt',
+                severity: SEVERITY.CRITICAL,
+                timestamp: '2024-03-29T11:05:00.000Z',
+                context: { probability: '98.5%', confidence: '92.1%', behavior: 'TAILGATING_ATTEMPT', zone: 'Server Room' },
+                status: 'NEW'
+            }
+        ];
 
         // Asynchronous initialization of the TF.js model
         setTimeout(async () => {
@@ -66,6 +98,39 @@ class SecurityAlertsSystem {
                 console.error("[STP-MODEL] Initialization failed:", err);
             }
         }, 100);
+    }
+
+    setVoiceAlerts(enabled) {
+        this.voiceAlertsEnabled = enabled;
+        console.log(`[VOICE-ALERTS] ${enabled ? 'ENABLED' : 'DISABLED'}`);
+    }
+
+    updateConfig(newConfig) {
+        this.config = newConfig;
+        console.log("[ENGINE-CONFIG] System configuration synchronized.");
+    }
+
+    speakAlert(alert) {
+        if (!this.voiceAlertsEnabled) return;
+        
+        // Ensure browser supports synthesis
+        if (!window.speechSynthesis) return;
+
+        const zone = alert.context?.zone || alert.context?.currentZoneName || 'Unknown Zone';
+        const visitorId = alert.context?.visitorId || 'Unknown ID';
+        const text = `Security Alert. ${alert.name} detected. Visitor ${visitorId} in ${zone}. Threat level ${alert.severity}.`;
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // Optional: Filter for specific voice (e.g., more "system" like)
+        const voices = window.speechSynthesis.getVoices();
+        const systemVoice = voices.find(v => v.name.includes('Daniel') || v.name.includes('Samantha')) || voices[0];
+        if (systemVoice) utterance.voice = systemVoice;
+
+        window.speechSynthesis.speak(utterance);
     }
 
     /**
@@ -180,10 +245,19 @@ class SecurityAlertsSystem {
         this.activeAlerts.unshift(newAlert);
         this.notifySubscribers();
         this.handleEscalation([newAlert]);
+        
+        // Voice Alert Trigger
+        if (newAlert.severity === SEVERITY.CRITICAL || newAlert.severity === SEVERITY.HIGH || newAlert.severity === SEVERITY.AI_PREDICTED) {
+            this.speakAlert(newAlert);
+        }
+
         return newAlert;
     }
 
     handleEscalation(alerts) {
+        const t2Delay = (this.config.alerts?.timer || 30) * 1000;
+        const t3Delay = t2Delay * 2;
+
         alerts.forEach(alert => {
             // T-Series Escalation Protocol Integration
             if (alert.severity === SEVERITY.CRITICAL || alert.severity === SEVERITY.AI_PREDICTED) {
@@ -193,23 +267,21 @@ class SecurityAlertsSystem {
                 // T+0: Instant Context Injection (CCTV/Lockdown Ready)
                 console.warn(`[T+0s ESCALATION] ${alert.name} in ${alert.context.zone || 'Unknown Zone'}. Preparing CCTV context.`);
 
-                // T+30: Manager Paging if unacknowledged
+                // T+N: Guard Node Ping (T2)
                 setTimeout(() => {
                     const active = this.activeAlerts.find(a => a.id === alert.id);
                     if (active && active.status === 'NEW') {
-                        console.error(`[T+30s ESCALATION] Alert ${alert.id} UNACKNOWLEDGED. Paging shift manager.`);
+                        console.error(`[T+${t2Delay/1000}s ESCALATION] Alert ${alert.id} UNACKNOWLEDGED. Paging guard node.`);
 
-                        if (isHighProbBreach || alert.severity === SEVERITY.CRITICAL) {
-                            // T+60: Global Escalation / Facility Lockdown
-                            setTimeout(() => {
-                                const stillActive = this.activeAlerts.find(a => a.id === alert.id);
-                                if (stillActive && stillActive.status === 'NEW') {
-                                    console.error(`[T+60s GLOBAL ESCALATION] CRITICAL BREACH PATTERN CONFIRMED. Initiating automated facility protocol.`);
-                                }
-                            }, 30000);
-                        }
+                        // T+2N: Manager Paging (T3)
+                        setTimeout(() => {
+                            const stillActive = this.activeAlerts.find(a => a.id === alert.id);
+                            if (stillActive && stillActive.status === 'NEW') {
+                                console.error(`[T+${t3Delay/1000}s GLOBAL ESCALATION] CRITICAL BREACH PATTERN CONFIRMED. Initiating manager protocol.`);
+                            }
+                        }, t2Delay);
                     }
-                }, 30000);
+                }, t2Delay);
             }
         });
     }
@@ -233,6 +305,11 @@ class SecurityAlertsSystem {
             alert.resolutionTime = new Date().toISOString();
             this.notifySubscribers();
         }
+    }
+
+    resolveAlert(alertId) {
+        this.activeAlerts = this.activeAlerts.filter(a => a.id !== alertId);
+        this.notifySubscribers();
     }
 }
 
